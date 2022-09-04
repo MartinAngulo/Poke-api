@@ -19,7 +19,6 @@
 //     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 const server = require('./src/app.js');
 const { conn } = require('./src/db.js');
-// const axios = require('axios');
 const Load = require('./src/DBload/Load.js')
 
 // Syncing all the models at once.
