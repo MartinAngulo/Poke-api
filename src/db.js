@@ -1,54 +1,94 @@
-require('dotenv').config();
-import * as pg from 'pg';
-const { Sequelize } = require('sequelize');
-const fs = require('fs');
-const path = require('path');
-const {
-  DB_USER, DB_PASSWORD, DB_HOST,
-} = process.env;
+require("dotenv").config();
+// import * as pg from 'pg';
+const { Sequelize } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
+const { DB_USER, DB_PASSWORD, DB_HOST, DB_NAME } = process.env;
+const db = {};
 
-const sequelize = new Sequelize(`postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/xatgverb`, {
-  logging: false, // set to console.log to see the raw SQL queries
-  native: false, // lets Sequelize know we can use pg-native for ~30% more speed
-  dialectModule: pg,
-  //options for azure DB:
-  // dialectOptions: {
-  dialectOptions: {
-      ssl: {
-        require: true, // This will help you. But you will see nwe error
-        rejectUnauthorized: false // This line will fix new error
-      }
-    },
-});
+const sequelize = new Sequelize(
+  `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}`,
+  {
+    logging: false, // set to console.log to see the raw SQL queries
+    native: false, // lets Sequelize know we can use pg-native for ~30% more speed
+    // dialectModule: pg,
+    //options for azure DB:
+    // dialectOptions: {
+    // dialectOptions: {
+    //   ssl: {
+    //     require: true, // This will help you. But you will see nwe error
+    //     rejectUnauthorized: false, // This line will fix new error
+    //   },
+    // },
+  }
+);
 const basename = path.basename(__filename);
 
-const modelDefiners = [];
+// const modelDefiners = [];
 
 // Leemos todos los archivos de la carpeta Models, los requerimos y agregamos al arreglo modelDefiners
-fs.readdirSync(path.join(__dirname, '/models'))
-  .filter((file) => (file.indexOf('.') !== 0) && (file !== basename) && (file.slice(-3) === '.js'))
-  .forEach((file) => {
-    modelDefiners.push(require(path.join(__dirname, '/models', file)));
-  });
+// fs.readdirSync(path.join(__dirname, "/models"))
+//   .filter(
+//     (file) =>
+//       file.indexOf(".") !== 0 && file !== basename && file.slice(-3) === ".js"
+//   )
+//   .forEach((file) => {
+//     modelDefiners.push(require(path.join(__dirname, "/models", file)));
+//   });
 
 // Injectamos la conexion (sequelize) a todos los modelos
-modelDefiners.forEach(model => model(sequelize));
+// modelDefiners.forEach((model) => model(sequelize));
+
 // Capitalizamos los nombres de los modelos ie: product => Product
-let entries = Object.entries(sequelize.models);
-let capsEntries = entries.map((entry) => [entry[0][0].toUpperCase() + entry[0].slice(1), entry[1]]);
-sequelize.models = Object.fromEntries(capsEntries);
+// let entries = Object.entries(sequelize.models);
+// let capsEntries = entries.map((entry) => [
+//   entry[0][0].toUpperCase() + entry[0].slice(1),
+//   entry[1],
+// ]);
+// sequelize.models = Object.fromEntries(capsEntries);
+// db = Object.fromEntries(capsEntries);
 
 // En sequelize.models están todos los modelos importados como propiedades
 // Para relacionarlos hacemos un destructuring
-const { Pokemon, Types } = sequelize.models;
+
+// Object.keys(sequelize.models).forEach((model) => {
+//   if (sequelize.models[model].associate) {
+//     console.log(sequelize.models);
+//     sequelize.models[model].associate(sequelize.models);
+//   }
+// });
+
+// const { Pokemon, Types } = sequelize.models;
 
 // Aca vendrian las relaciones
 // Product.hasMany(Reviews);
 
-Pokemon.belongsToMany(Types, {through: 'poke-types'});
-Types.belongsToMany(Pokemon, {through: 'poke-types'});
+// Pokemon.belongsToMany(Types, { through: "poke-types" });
+// Types.belongsToMany(Pokemon, { through: "poke-types" });
 
-module.exports = {
-  ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
-  conn: sequelize,     // para importart la conexión { conn } = require('./db.js');
-};
+fs.readdirSync(path.join(__dirname, "/models"))
+  .filter((file) => {
+    return (
+      file.indexOf(".") !== 0 && file !== basename && file.slice(-3) === ".js"
+    );
+  })
+  .forEach((file) => {
+    const model = require(path.join(__dirname, "/models", file))(sequelize);
+    db[model.name] = model;
+  });
+
+// modelDefiners.forEach(model => model(sequelize));
+// Capitalizamos los nombres de los modelos ie: product => Product
+Object.keys(db).forEach((modelName) => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
+
+db.conn = sequelize;
+
+// module.exports = {
+//   ...sequelize.models,// para poder importar los modelos así: const { Product, User } = require('./db.js');
+//   conn: sequelize, // para importart la conexión { conn } = require('./db.js');
+// };
+module.exports = db;
